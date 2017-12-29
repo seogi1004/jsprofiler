@@ -13,7 +13,16 @@
 }(this, function JSProfiler(global) {
     if(typeof(global.Proxy) != "function") {
         console.log("JSProfiler only works with browsers that support the ECMA6 specification.");
-        return {};
+
+        return {
+            setup: function() {},
+            start: function() {},
+            end: function() {},
+            reset: function() {},
+            print: function() {},
+            show: function() {},
+            data: []
+        };
     }
 
     var _options = {
