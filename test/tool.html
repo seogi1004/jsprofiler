@@ -49,8 +49,9 @@
             request.send();
         }
 
-        JSProfiler.setup({ exceptObjects: [ "jQuery" ] });
-        JSProfiler.start();
+        JSProfiler.setup({
+            exceptObjects: [ "jQuery" ]
+        }).start();
 
         $(document).ready(function() {
             ajaxTest(function(text) {

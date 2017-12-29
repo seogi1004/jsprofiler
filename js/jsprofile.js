@@ -261,6 +261,8 @@
             if (typeof(opts.exceptObjects) == "object" && opts.exceptObjects.length) {
                 _options.exceptObjects = _options.exceptObjects.concat(opts.exceptObjects);
             }
+
+            return this;
         },
         start: function () {
             if (!_initialize) {
@@ -268,12 +270,16 @@
                 _initialize = true;
                 _running = true;
             }
+
+            return this;
         },
         end: function () {
             _running = false;
+            return this;
         },
         reset: function () {
             PROFILES.length = 0;
+            return this;
         },
         print: function() {
             if(typeof(console.table) == "function") {
@@ -282,7 +288,7 @@
         },
         show: function(url) {
             _running = false;
-            window.open(url, "", "width=1024, height=768");
+            window.open(url, "jsprofiler", "width=1024, height=768");
         },
         data: PROFILES
     }
