@@ -11,6 +11,11 @@
         root.JSProfiler = factory(root);
     }
 }(this, function JSProfiler(global) {
+    if(typeof(global.Proxy) != "function") {
+        console.log("JSProfiler only works with browsers that support the ECMA6 specification.");
+        return {};
+    }
+
     var _options = {
         startPoint: "global",
         maxDepth: 2,
