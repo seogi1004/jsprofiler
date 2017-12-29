@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JS Profiler</title>
+    <link rel="stylesheet" type="text/css" href="lib/grid.min.css">
+    <link rel="stylesheet" type="text/css" href="lib/grid-jennifer.min.css">
+    <script type="text/javascript" src="lib/jquery-1.8.0.min.js"></script>
+    <script type="text/javascript" src="lib/core.min.js"></script>
+    <script type="text/javascript" src="lib/grid.min.js"></script>
+    <script>
+        function calculateTreeData(profiles) {
+            profiles.sort(function(a, b) {
+                return (a.callerDepth == b.callerDepth) ?
+                    a.startTime - b.startTime : a.callerDepth - b.callerDepth;
+            });
+
+            var indexMap = {
+                "global/0": "0"
+            };
+            var indexCount = {
+                "global/0": 0
+            };
+            var data = [{
+                index: "0",
+                data: {
+                    functionName: "global",
+                    calleeName: "global/0",
+                    callerName: null,
+                    startTime: null,
+                    parameterList: [],
+                    responseTime: -1,
+                    parentName: "",
+                    callCount: 1
+                },
+                type: "open"
+            }];
+
+            // limit만큼만 트리데이터 찾기 시도함.
+            var traverseTreeData = function(originData, targetProfiles, limit) {
+                var etcProfiles = [];
+
+                for(var i = 0; i < targetProfiles.length; i++) {
+                    var row = targetProfiles[i],
+                        index = null;
+
+                    if(indexMap[row.callerName]) {
+                        index = indexMap[row.callerName] + "." + indexCount[row.callerName];
+                        indexCount[row.callerName] += 1;
+                    }
+
+                    if(index != null) {
+                        indexMap[row.calleeName] = index;
+                        indexCount[row.calleeName] = 0;
+
+                        originData.push({
+                            index: index,
+                            data: row,
+                            type: "fold"
+                        });
+                    } else {
+                        etcProfiles.push(row);
+                    }
+                }
+
+                if(etcProfiles.length > 0 && limit > 0) {
+                    traverseTreeData(originData, etcProfiles, limit - 1);
+                }
+            }
+
+            traverseTreeData(data, profiles, 5);
+
+            console.log("트리 데이터 개수 : " + data.length);
+
+            return data;
+        }
+
+        function convertSystemSourcetoHtml(str) {
+            if(typeof(str) == "string") {
+                str = str.replace(/</g,"&lt;");
+                str = str.replace(/>/g,"&gt;");
+                str = str.replace(/\"/g,"&quot;");
+                str = str.replace(/\'/g,"&#39;");
+                str = str.replace(/\n/g,"");
+                return str;
+            }
+
+            return str;
+        }
+
+        function printParameters(params) {
+            var values = [],
+                maxlen = 50;
+
+            for(var i = 0; i < params.length; i++) {
+                var v = params[i].value;
+
+                if(typeof(v) == "object" && v.length > maxlen) {
+                    values.push(convertSystemSourcetoHtml(v.substr(0, maxlen)));
+                } else {
+                    values.push(convertSystemSourcetoHtml(v));
+                }
+            }
+
+            return values.join(", ");
+        }
+
+        jui.ready([ "grid.xtable", "util.base" ], function(xtable, _) {
+            var tableWidth = $("#contents").width(),
+                tableHeight = 700;
+
+            var calltreeTable = xtable("#ext_calltree", {
+                fields: [ "functionName", "responseTime", "parentName", null, null, "callCount" ],
+                resize: true,
+                width: tableWidth,
+                scrollWidth: tableWidth,
+                scrollHeight: tableHeight,
+                rowHeight: 25,
+                buffer: "vscroll",
+                event: {
+                    select: function(row, e) {
+                        if(row.type == "fold") {
+                            this.open(row.index);
+                        } else {
+                            this.fold(row.index);
+                        }
+                    }
+                }
+            });
+
+            _.resize(function() {
+                calltreeTable.scrollWidth($("#contents").width(), true);
+            }, 100);
+
+            if(window.opener != null) {
+                calltreeTable.updateTree(calculateTreeData(opener.JSProfiler.data));
+            }
+        });
+    </script>
+</head>
+<body class="jui">
+<div id="contents" style="padding: 10px;">
+    <div id="ext_calltree" class="xtable scroll">
+        <table class="table simple headline nowrap">
+            <thead>
+            <tr>
+                <th width="30%">Profile Name</th>
+                <th>Response Time</th>
+                <th>Package</th>
+                <th>Parameters</th>
+                <th>Return</th>
+                <th>Calls</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script data-jui="#ext_calltree" data-tpl="row" type="text/template">
+    <!
+    var paramStr = printParameters(parameterList);
+    var returnStr = (typeof(returnValue) == "undefined") ? "undefined" : returnValue;
+    !>
+    <tr>
+        <td title="<!= callerName !>" style="padding-left: <!= 5 + (row.depth * 30) !>px">
+            <! if(row.children.length > 0) { !>
+            <strong><! if(row.type == "open") { !>-<! } else { !>+<! } !></strong>
+            <! } !>
+            <!= functionName !>
+        </td>
+        <td>
+            <!= (responseTime == -1) ? "" : responseTime + "ms" !>
+        </td>
+        <td><!= parentName !></td>
+        <td title="<!= paramStr !>"><!= paramStr !></td>
+        <td title="<!= returnStr !>"><!= returnStr !></td>
+        <td><!= callCount !></td>
+    </tr>
+</script>
+
+<script data-jui="#ext_calltree" data-tpl="none" type="text/template">
+    <tr>
+        <td colspan="6">No entries</td>
+    </tr>
+</script>
+</body>
+</html>
