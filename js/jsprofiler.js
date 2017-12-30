@@ -161,6 +161,7 @@
             return realReturnValue;
         };
 
+
         return new Proxy(obj, {
             apply: proxyApply
         });
@@ -215,27 +216,45 @@
         return "{" + values.join(",") + "}";
     }
 
+    function isArray(obj) {
+        if (typeof(obj) == "object" && obj.hasOwnProperty("length")) {
+            return true;
+        }
+
+        return false;
+    }
+
     function initializeProxies(origin, depth) {
-        var root = eval(origin);
-        var reg1 = /^[0-9]*$/;
-        var reg2 = /[0-9a-zA-Z_$]/;
+        if(isArray(origin)) {
+            for(var i = 0; i < origin.length; i++) {
+                initializeProxies(origin[i], 0);
+            }
+        } else if(typeof(origin) == "string") {
+            var root = eval(origin);
+            var reg1 = /^[0-9]*$/;
+            var reg2 = /[0-9a-zA-Z_$]/;
 
-        for(var name in root) {
-            if(reg1.test(name) || !reg2.test(name) || name.indexOf(" ") != -1) continue;
-
-            var path = origin + "." + name;
-
-            if(typeof(root[name]) == "function") {
-                if(!_options.exceptFunctions.includes(name)) {
-                    root[name] = createProxy(origin, name, root[name]);
-                }
+            // depth가 0이고, 대상이 함수일 때만 적용
+            if(typeof(root) == "function" && depth == 0) {
+                var name = origin.split("global.").join("");
+                global[name] = createProxy("global", name, root);
             }
 
-            if(typeof(root[name]) == "function" || typeof(root[name]) == "object") {
-                // TODO: object[string] 형태로 설정된 객체는 제외함. 차후 개선할 필요가 있음
-                if(name.indexOf(".") == -1 && depth < _options.maxDepth) {
-                    if(!_options.exceptObjects.includes(name)) {
-                        initializeProxies(path, depth + 1);
+            for(var name in root) {
+                if(reg1.test(name) || !reg2.test(name) || name.indexOf(" ") != -1) continue;
+
+                if(typeof(root[name]) == "function") {
+                    if(!_options.exceptFunctions.includes(name)) {
+                        root[name] = createProxy(origin, name, root[name]);
+                    }
+                }
+
+                if(typeof(root[name]) == "function" || typeof(root[name]) == "object") {
+                    // TODO: object[string] 형태로 설정된 객체는 제외함. 차후 개선할 필요가 있음
+                    if(name.indexOf(".") == -1 && depth < _options.maxDepth) {
+                        if(!_options.exceptObjects.includes(name)) {
+                            initializeProxies(origin + "." + name, depth + 1);
+                        }
                     }
                 }
             }
@@ -244,9 +263,9 @@
 
     return {
         setup: function (opts) {
-            if (typeof(opts) != "object" || _initialize) return;
+            if (_initialize) return;
 
-            if (typeof(opts.startPoint) == "string") {
+            if (typeof(opts.startPoint) == "string" || isArray(opts.startPoint)) {
                 _options.startPoint = opts.startPoint;
             }
 
@@ -254,11 +273,11 @@
                 _options.maxDepth = opts.maxDepth;
             }
 
-            if (typeof(opts.exceptFunctions) == "object" && opts.exceptFunctions.length) {
+            if (isArray(opts.exceptFunctions)) {
                 _options.exceptFunctions = _options.exceptFunctions.concat(opts.exceptFunctions);
             }
 
-            if (typeof(opts.exceptObjects) == "object" && opts.exceptObjects.length) {
+            if (isArray(opts.exceptObjects)) {
                 _options.exceptObjects = _options.exceptObjects.concat(opts.exceptObjects);
             }
 

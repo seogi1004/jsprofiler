@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="../tool/lib/jquery-1.8.0.min.js"></script>
+    <script src="../js/jsprofiler.js"></script>
+    <script>
+        var MainObj = {
+            parentFunc: function(callback, count) {
+                console.log("parentFunc");
+
+                this.childrenFunc(count);
+                if(typeof(callback) == "function") callback();
+            },
+            childrenFunc: function(count) {
+                console.log("childrenFunc");
+
+                childrenSubFunc(count, count);
+            }
+        };
+
+        function childrenSubFunc(a, b) {
+            return a*b;
+        }
+
+        function parentSubFunc(a) {
+            return a*a;
+        }
+
+        function callSelf(count) {
+            console.log("callSelf : " + count);
+
+            if(count > 0) {
+                callSelf(count - 1);
+            }
+        }
+
+        function ajaxTest(callback) {
+            var request = new XMLHttpRequest();
+            var url = "https://code.jquery.com/jquery-3.2.1.min.js";
+
+            request.open("GET", url);
+            request.addEventListener("load", function() {
+                if(request.status === 200) {
+                    callback(request.responseText);
+                }
+            }, false);
+
+            request.send();
+        }
+
+        JSProfiler.setup({
+            startPoint: [ "ajaxTest", "MainObj" ] // "function name" or "object name"
+        }).start();
+
+        $(document).ready(function() {
+            ajaxTest(function(text) {
+                MainObj.childrenFunc(5);
+            });
+        });
+    </script>
+</head>
+<body>
+    <a href="javascript:JSProfiler.show('../tool/jsprofiler.html')">Show profiles</a>
+</body>
+</html>
