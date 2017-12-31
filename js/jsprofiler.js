@@ -236,8 +236,15 @@
 
             // depth가 0이고, 대상이 함수일 때만 적용
             if(typeof(root) == "function" && depth == 0) {
-                var name = origin.split("global.").join("");
-                global[name] = createProxy("global", name, root);
+                var tokens = origin.split("."),
+                    parent = "global",
+                    name = tokens.pop();
+
+                if(tokens.length > 1) {
+                    parent = tokens.join(".");
+                }
+
+                global[name] = createProxy(parent, name, root);
             }
 
             for(var name in root) {
